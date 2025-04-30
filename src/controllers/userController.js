@@ -2,6 +2,8 @@ const User = require("../models/UserModel");
 const { sendResponse } = require("../helpers/response");
 const { Message } = require("../helpers/messages");
 const bcrypt = require("bcrypt");
+const jwt = require('jsonwebtoken');
+const secretKey = process.env.JWT_SECRET; // Make sure to set this in your environment variables
 
 exports.signUp = async (req, res) => {
     try {
@@ -42,38 +44,52 @@ exports.signUp = async (req, res) => {
     }
 };
 
+
+
 exports.login = async (req, res) => {
     try {
         const { mobile, password } = req.body;
 
         // Check if mobile number exists
         const user = await User.findOne({ mobile: mobile.trim() });
-        if (!user) return sendResponse(res, 404, Message.USER_NOT_FOUND);
+        if (!user) return sendResponse(res, 404, null, Message.USER_NOT_FOUND);
 
         // Check if user is active
-        if (!user.isActive) return sendResponse(res, 403, Message.USER_INACTIVE);
+        if (!user.isActive) return sendResponse(res, 403, null, Message.USER_INACTIVE);
 
         // Verify password
         const isPasswordValid = await bcrypt.compare(password?.trim(), user.password);
-        if (!isPasswordValid) return sendResponse(res, 401, Message.INVALID_CREDENTIALS);
+        if (!isPasswordValid) return sendResponse(res, 401, null, Message.INVALID_CREDENTIALS);
 
-        // You might want to generate a token here for authentication
-        // const token = generateAuthToken(user);
+        // Generate JWT token
+        const token = jwt.sign(
+            { 
+                userId: user._id,
+                mobile: user.mobile,
+                email: user.email
+            },
+            secretKey,
+            { expiresIn: '24h' } // Token expires in 24 hours
+        );
 
-        // Return success response with user data (excluding password)
+        // Prepare user data for response (excluding sensitive information)
         const userData = {
-            
-            _id:  user._id,
+            _id: user._id,
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,
             mobile: user.mobile,
             isEmailVerified: user.isEmailVerified,
             isMobileVerified: user.isMobileVerified
-            // token: token // Include if you're generating a token
         };
 
-        sendResponse(res, 200, Message.LOGIN_SUCCESS, userData);
+        // Return success response with user data and token
+        sendResponse(res, 200, { 
+            message: Message.LOGIN_SUCCESS,
+            user: userData,
+            token: token,
+            expiresIn: '24h'
+        });
         
     } catch (err) {
         console.log(err);
