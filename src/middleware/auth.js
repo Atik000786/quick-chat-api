@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 const { sendResponse } = require("../helpers/response");
 const User = require("../models/UserModel");
 const { Message } = require("../helpers/messages");
-const secretKey = process.env.SECRET_KEY;
+const secretKey = process.env.JWT_SECRET;
 
 exports.GenerateToken = (id) => {
 
@@ -18,6 +18,7 @@ exports.GenerateToken = (id) => {
 
 exports.ValidateToken = async (req, res, next) => {
     try {
+        let isUser = false;
         const token = req.headers.authorization;
         
         // Check if token exists
@@ -28,12 +29,20 @@ exports.ValidateToken = async (req, res, next) => {
         // Verify token
         const decodedToken = jwt.verify(token, secretKey);
 
-        // Find user by ID and select specific fields
-        const user = await User.findById(decodedToken.id).select(
-            "_id firstName lastName email mobile isActive isEmailVerified isMobileVerified"
+        // Try to find user as Student first
+        let user = await User.findById(decodedToken.id).select(
+            "_id name mobile email type isActive isEmailVerified isMobileVerified"
         );
 
-        // If user not found
+        // If not found as Student, try as User
+        if (!user) {
+            user = await User.findById(decodedToken.id).select(
+                "_id firstName lastName email mobile isActive isEmailVerified isMobileVerified"
+            );
+            isUser = true;
+        }
+
+        // If user not found in either collection
         if (!user) {
             return sendResponse(res, 401, null, Message.USER_NOT_FOUND);
         }
@@ -43,8 +52,9 @@ exports.ValidateToken = async (req, res, next) => {
             return sendResponse(res, 403, null, Message.ACCOUNT_INACTIVE);
         }
 
-        // Attach user data to request
+        // Attach user data to request with isUser flag
         req.user = user;
+        req.user.isUser = isUser;
         next();
     } catch (err) {
         console.error("Authentication Error:", err);
