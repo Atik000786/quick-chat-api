@@ -96,3 +96,53 @@ exports.login = async (req, res) => {
         sendResponse(res, 500, null, err.message);
     }
 };
+
+exports.getAllUsers = async (req, res) => {
+    try {
+        // Get parameters for infinite scrolling
+        const limit = parseInt(req.query.limit) || 10;
+        const lastId = req.query.lastId; // The last document ID from the previous batch
+        
+        // Build base query for active users only (unless admin requests all)
+        let query = { isActive: true };
+        if (req.user && req.user.isAdmin) {
+            query = {};
+        }
+
+        // If lastId is provided, add it to the query to get the next batch
+        if (lastId) {
+            query._id = { $gt: lastId }; // Using $gt for sequential loading
+        }
+
+        // Get users with limit and sorting by _id
+        const users = await User.find(query)
+            .select('-password') // Exclude password field
+            .sort({ _id: 1 }) // Sort by _id ascending for consistent ordering
+            .limit(limit);
+
+        // Determine if there are more users to load
+        let hasMore = false;
+        if (users.length > 0) {
+            const lastUser = users[users.length - 1];
+            const nextUser = await User.findOne({
+                _id: { $gt: lastUser._id },
+                ...query
+            }).select('_id');
+            hasMore = !!nextUser;
+        }
+
+        // Prepare response for infinite scrolling
+        const response = {
+            users,
+            hasMore, // Indicates whether more users are available
+            lastId: users.length > 0 ? users[users.length - 1]._id : null
+        };
+
+        // Return success response
+        sendResponse(res, 200, response);
+        
+    } catch (err) {
+        console.log(err);
+        sendResponse(res, 500, null, err.message);
+    }
+};
