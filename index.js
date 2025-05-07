@@ -12,12 +12,28 @@ const jwt = require('jsonwebtoken');
 
 const httpServer = require('http').createServer(app);
 
-const io = new Server(httpServer, {
-  cors: {
-    origin: 'http://localhost:3001',
-    methods: ['GET', 'POST'],
-    credentials: true,
+// Configure CORS for both HTTP and WebSocket
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  'http://localhost:3001' // For local development
+];
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
   },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
+const io = new Server(httpServer, {
+  cors: corsOptions,
   connectionStateRecovery: {
     maxDisconnectionDuration: 2 * 60 * 1000,
     skipMiddlewares: true,
@@ -113,14 +129,7 @@ function setupChangeStreams() {
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 app.use(bodyParser.json({ limit: '500mb' }));
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
-  })
-);
+app.use(cors(corsOptions));
 app.use(morgan('dev'));
 
 app.use('/api/v1', router);
