@@ -15,7 +15,8 @@ const httpServer = require('http').createServer(app);
 // Configure CORS for both HTTP and WebSocket
 const allowedOrigins = [
   process.env.CLIENT_URL,
-  'http://localhost:3001' // For local development
+    'http://localhost:3001' // For local development
+  
 ];
 
 const corsOptions = {
