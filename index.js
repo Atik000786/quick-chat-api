@@ -16,7 +16,6 @@ const httpServer = require('http').createServer(app);
 const allowedOrigins = [
   process.env.CLIENT_URL,
     'http://localhost:3001' // For local development
-  
 ];
 
 const corsOptions = {
