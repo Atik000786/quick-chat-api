@@ -3,7 +3,6 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 const app = express();
 const cors = require('cors');
-const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const router = require('./router');
 const port = process.env.PORT || 9000;
@@ -15,7 +14,8 @@ const httpServer = require('http').createServer(app);
 // Configure CORS for both HTTP and WebSocket
 const allowedOrigins = [
   process.env.CLIENT_URL,
-    'http://localhost:3001' // For local development
+  'https://playful-lily-f5ccde.netlify.app', // Add client origin explicitly
+  'http://localhost:3001' // For local development
 ];
 
 const corsOptions = {
@@ -31,6 +31,12 @@ const corsOptions = {
   credentials: true,
   optionsSuccessStatus: 200
 };
+
+// Apply CORS middleware globally
+app.use(cors(corsOptions));
+
+// Handle preflight requests for all routes
+app.options('*', cors(corsOptions));
 
 const io = new Server(httpServer, {
   cors: corsOptions,
@@ -126,12 +132,12 @@ function setupChangeStreams() {
   console.log('MongoDB Change Streams enabled');
 }
 
+// Middleware
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
-app.use(bodyParser.json({ limit: '500mb' }));
-app.use(cors(corsOptions));
 app.use(morgan('dev'));
 
+// Routes
 app.use('/api/v1', router);
 
 app.get('/health', (req, res) => {
@@ -145,6 +151,7 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({
@@ -172,7 +179,7 @@ process.on('SIGINT', async () => {
     io.close(() => {
       console.log('WebSocket server closed');
       httpServer.close(() => {
-        console.log('HTTP server stopped');
+        console.log('HTTP server closed');
         process.exit(0);
       });
     });
