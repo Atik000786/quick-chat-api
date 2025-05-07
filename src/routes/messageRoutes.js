@@ -10,5 +10,7 @@ router.use(ValidateToken);
 router.post('/send', messageController.sendMessage);
 router.get('/:userId', messageController.getMessages);
 router.get('/chats/list', messageController.getChats);
+router.put('/markAsRead', messageController.markMessagesAsRead);
+
 
 module.exports = router;
