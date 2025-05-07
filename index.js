@@ -115,7 +115,7 @@ app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 app.use(bodyParser.json({ limit: '500mb' }));
 app.use(
   cors({
-    origin: 'http://localhost:3001',
+    origin: process.env.CLIENT_URL,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
