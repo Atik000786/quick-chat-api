@@ -15,25 +15,39 @@ const httpServer = require('http').createServer(app);
 // Configure CORS for both HTTP and WebSocket
 const allowedOrigins = [
   process.env.CLIENT_URL,
-    'http://localhost:3001' // For local development
+  'http://localhost:3001',
+  'https://playful-lily-f5ccde.netlify.app'
 ];
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   credentials: true,
   optionsSuccessStatus: 200
 };
 
+// Apply CORS middleware
+app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options('*', cors(corsOptions));
+
 const io = new Server(httpServer, {
-  cors: corsOptions,
+  cors: {
+    origin: allowedOrigins,
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
   connectionStateRecovery: {
     maxDisconnectionDuration: 2 * 60 * 1000,
     skipMiddlewares: true,
@@ -129,7 +143,6 @@ function setupChangeStreams() {
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 app.use(bodyParser.json({ limit: '500mb' }));
-app.use(cors(corsOptions));
 app.use(morgan('dev'));
 
 app.use('/api/v1', router);
